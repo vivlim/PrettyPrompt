@@ -130,6 +130,8 @@ public interface IPromptCallbacks
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>Formatted input and new caret position.</returns>
     Task<(string Text, int Caret)> FormatInput(string text, int caret, KeyPress keyPress, CancellationToken cancellationToken);
+
+    bool IsControlChar(KeyPress keyPress);
 }
 
 public class PromptCallbacks : IPromptCallbacks
@@ -233,7 +235,7 @@ public class PromptCallbacks : IPromptCallbacks
         int wordStart = caret;
         for (int i = wordStart - 1; i >= 0; i--)
         {
-            if (IsWordCharacter(text[i]))
+            if (IsWordCharacter(text[i], text, caret))
             {
                 --wordStart;
             }
@@ -247,7 +249,7 @@ public class PromptCallbacks : IPromptCallbacks
         int wordEnd = caret;
         for (int i = caret; i < text.Length; i++)
         {
-            if (IsWordCharacter(text[i]))
+            if (IsWordCharacter(text[i], text, caret))
             {
                 ++wordEnd;
             }
@@ -258,9 +260,8 @@ public class PromptCallbacks : IPromptCallbacks
         }
 
         return Task.FromResult(TextSpan.FromBounds(wordStart, wordEnd));
-
-        static bool IsWordCharacter(char c) => char.IsLetterOrDigit(c) || c == '_';
     }
+    protected virtual bool IsWordCharacter(char c, string text, int caret) => char.IsLetterOrDigit(c) || c == '_';
 
     /// <inheritdoc cref="IPromptCallbacks.GetCompletionItemsAsync"/>
     protected virtual Task<IReadOnlyList<CompletionItem>> GetCompletionItemsAsync(string text, int caret, TextSpan spanToBeReplaced, CancellationToken cancellationToken)
@@ -299,4 +300,9 @@ public class PromptCallbacks : IPromptCallbacks
     /// <inheritdoc cref="GetOverloadsAsync(string, int, CancellationToken)"/>
     protected virtual Task<(IReadOnlyList<OverloadItem>, int ArgumentIndex)> GetOverloadsAsync(string text, int caret, CancellationToken cancellationToken)
         => Task.FromResult<(IReadOnlyList<OverloadItem>, int ArgumentIndex)>((Array.Empty<OverloadItem>(), 0));
+
+    public virtual bool IsControlChar(KeyPress keyPress)
+    {
+        return char.IsControl(keyPress.ConsoleKeyInfo.KeyChar);
+    }
 }
